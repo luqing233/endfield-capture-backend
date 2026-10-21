@@ -30,6 +30,23 @@ HTTP 看板暴露出来。
 
 ## 工作原理
 
+### 已验证客户端
+
+当前支持国服和 GRYPHLINK 国际服的两份已验证构建，完整 DLL / metadata 指纹与材料定位定义在
+`src/endfield_capture/client_profiles.py`。未知构建仍会拒绝启动，不能通过删除版本校验来适配。
+两服分别使用绑定各自指纹的公钥模数文件；国际服模数已通过其真实新连接握手、原生离线模拟
+以及后续连续业务帧回放验证。国际服样本处于首次角色身份选择阶段，尚未验证完整世界中的长期运行。
+
+请用 `--game-dir` 或 `EF_GAME_DIR` 明确选择客户端；同时安装两服时，默认目录可能优先找到国服。
+例如：`endfield-capture-backend serve --game-dir "F:/Arknights Endfield" --no-map-ws`。
+国际服沿用同一套 TCP 重组、ChaCha20、protobuf 与坐标消息解析，仍须在新游戏连接建立前开启监听。
+SDK 初始化日志或标题页出现不代表已经捕获游戏主连接握手。
+
+SRSA 模拟回退已重新核对当前版本的原生跳板与模幂观测地址；生成工具按实际选中的客户端
+写入对应公钥文件，不会把国际服结果标成国服。原始抓包、私钥与会话参数不进入版本库。
+本地验证原生回退可设置 `EF_NATIVE_REFERENCE_PCAP` 与 `EF_GAME_DIR`，再运行
+`uv run --locked python -m unittest discover -s tests -p test_client_profiles.py`。
+
 一条坐标要穿过这些层，全部由本仓库实现，全部离线：
 
 ```

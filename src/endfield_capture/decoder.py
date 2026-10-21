@@ -47,6 +47,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from lz4.block import decompress as lz4_decompress
 
+from .client_profiles import CN_PROFILE, modulus_data_path, profile_for_digest
 from .facilities import FacilityStore
 from .pe_image import PeImage
 from .scene_index import resolve_scene
@@ -68,21 +69,13 @@ __all__ = [
 
 #: 已核对过的客户端哈希。对不上就拒绝启动——函数 RVA 和静态材料会随版本改变，
 #: 继续跑只会安静地解出错的东西。
-CLIENT_DLL_SHA256 = "ab00f1c41e13edf9816f142b166e3c2536d5bc7707992c39e5ed52d1cc888e2c"
-CLIENT_METADATA_SHA256 = "461321d9dca6a832bce3bd2390402efc7c83c145554e97a8058bb68fbec1c8ca"
+CLIENT_DLL_SHA256 = CN_PROFILE.dll_sha256
+CLIENT_METADATA_SHA256 = CN_PROFILE.metadata_sha256
 
 METADATA_RELATIVE_PATH = "Endfield_Data/il2cpp_data/Metadata/global-metadata.dat"
 
 #: 预存的公钥模数（由 ``tools/generate_rsa_modulus.py`` 离线生成）；不在就打不动模拟器
-MODULUS_DATA_PATH = Path(__file__).with_name("data") / "rsa_modulus.json"
-
-#: RSA 私钥的 metadata usage 插槽（本机已核对版本）。该插槽里 8 字节编码成
-#: ``(5 << 29) | (索引 << 1) | 1``——类型 5 是 il2cpp 的字符串字面量，低 29 位是索引。
-#: 旧版本这里用 ``RVA + SIZE + DISP`` 三段拼出插槽地址；本次客户端更新后直接给整段
-#: 插槽 RVA，另两段留 0，等价且少一处易错的加法。
-_KEY_LITERAL_RVA = 0x10657230
-_KEY_LITERAL_SIZE = 0
-_KEY_LITERAL_DISP = 0
+MODULUS_DATA_PATH = modulus_data_path(CN_PROFILE)
 
 #: 会话流从 ChaCha20 密钥流的第 64 字节开始（前 64 字节已被初始化消耗）
 _CIPHER_SEEK_BYTES = 64
@@ -268,10 +261,8 @@ class Bootstrap:
             raise ValueError(f"找不到客户端文件 {path}")
         image = PeImage(path)
         digest = hashlib.sha256(image.buf).hexdigest()
-        if digest != CLIENT_DLL_SHA256:
-            raise ValueError(
-                f"客户端版本已改变，需要重新核对解码入口（GameAssembly.dll sha256={digest}）"
-            )
+        self.profile = profile_for_digest(digest)
+        self.modulus_data_path = modulus_data_path(self.profile)
         return image
 
     def _load_client_private_key(self, image: PeImage):
@@ -282,12 +273,13 @@ class Bootstrap:
             raise ValueError(f"找不到客户端元数据 {metadata}")
         with metadata.open("rb") as file:
             digest = hashlib.file_digest(file, "sha256").hexdigest()
-            if digest != CLIENT_METADATA_SHA256:
+            if digest != self.profile.metadata_sha256:
                 raise ValueError(
                     f"客户端元数据版本已改变（global-metadata.dat sha256={digest}）"
                 )
-            slot = image.image_base + _KEY_LITERAL_RVA + _KEY_LITERAL_SIZE + _KEY_LITERAL_DISP
+            slot = image.image_base + self.profile.key_literal_rva
             word = image.u64_at_va(slot)
+            # IL2CPP usage slot: string-literal kind 5 plus its encoded index.
             if not (word & 1 and word >> 29 == 5):
                 raise ValueError("RSA 初始化字段的编码与预期不符")
             index = (word >> 1) & 0xFFFFFFF
@@ -305,15 +297,15 @@ class Bootstrap:
     def _load_stored_modulus(self) -> int | None:
         """读预存的模数；哈希对不上就当没有（不报错，回退模拟器）。"""
 
-        if not MODULUS_DATA_PATH.is_file():
+        if not self.modulus_data_path.is_file():
             return None
         try:
-            payload = json.loads(MODULUS_DATA_PATH.read_text(encoding="utf-8"))
+            payload = json.loads(self.modulus_data_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return None
         same_client = (
-            payload.get("client_dll_sha256") == CLIENT_DLL_SHA256
-            and payload.get("client_metadata_sha256") == CLIENT_METADATA_SHA256
+            payload.get("client_dll_sha256") == self.profile.dll_sha256
+            and payload.get("client_metadata_sha256") == self.profile.metadata_sha256
         )
         modulus = payload.get("modulus_hex") or ""
         if not same_client or not modulus:
@@ -336,7 +328,7 @@ class Bootstrap:
         except ImportError as exc:  # 打包版故意不带 unicorn / capstone
             raise RuntimeError(
                 f"这条客户端没有可用的预存模数，而本程序不含模拟器（{exc}）。"
-                f"请用 tools/generate_rsa_modulus.py 生成 {MODULUS_DATA_PATH}，"
+                f"请用 tools/generate_rsa_modulus.py 生成 {self.modulus_data_path}，"
                 "或用装了依赖的源码环境运行。"
             ) from exc
         started = time.perf_counter()

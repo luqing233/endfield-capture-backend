@@ -54,12 +54,13 @@ __all__ = [
     "emulate_receive_entry",
 ]
 
-#: 接收入口 RVA（本机已核对版本的静态值；客户端更新后需要重新定位）
-RECEIVE_ENTRY_RVA = 0x1901E0
+#: 两个已验证构建的 LoadFromFile2 原生调用目标（不是解释器内部函数）。
+#: 客户端更新后必须同时重新核对接收入口和下方模幂观测点。
+RECEIVE_ENTRY_RVA = 0x109EE0
 
 #: 大整数模幂的入口/出口 RVA，用来在运行中捕获一次完整的 ``base^exp mod n``
-_POW_ENTRY_RVA = 0x18EAF5
-_POW_EXIT_RVA = 0x18F4FC
+_POW_ENTRY_RVA = 0x1087F5
+_POW_EXIT_RVA = 0x1091FC
 
 #: 参数指针与返回指针各自异或的常量。**这些混淆的是指针，不是数据加密密钥。**
 _ARG_POINTER_XOR = 0x971AB5C8FF

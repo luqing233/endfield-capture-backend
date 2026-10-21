@@ -40,12 +40,13 @@ uv run --with pyinstaller pyinstaller packaging/endfield-capture-backend.spec --
 - **ok-end-field**：只有启用官方地图 WS 对照时才需要；配合本二进制一般用 `--no-map-ws`
   （冻结版带不了 ok-script 依赖）。
 
-两份运行时数据**随包带**，不用额外准备：
+三份运行时数据**随包带**，不用额外准备：
 
 | 文件 | 用途 |
 |---|---|
 | `data/scene_index.json` | 场景号 → 关卡 / 中文名 / 副本 / 大地图 |
-| `data/rsa_modulus.json` | 恢复登录响应所需的公钥模数，见下 |
+| `data/rsa_modulus.json` | 国服已验证构建的公钥模数 |
+| `data/rsa_modulus_international.json` | GRYPHLINK 国际服已验证构建的公钥模数 |
 
 ## 为什么冻结版不带 `unicorn` / `capstone`
 
@@ -58,7 +59,7 @@ uv run --with pyinstaller pyinstaller packaging/endfield-capture-backend.spec --
 存成数据**：
 
 1. `tools/generate_rsa_modulus.py` 跑一次模拟器，把 `{客户端哈希, modulus}` 写进
-   `data/rsa_modulus.json`；
+   所选客户端对应的 `data/rsa_modulus*.json`，指纹取自实际客户端 profile；
 2. 运行时 `Bootstrap` 先查这份数据（哈希对得上就用，**完全不碰模拟器**），对不上再回退模拟器；
 3. 于是冻结版只带数据，不再需要 `unicorn` / `capstone`。
 

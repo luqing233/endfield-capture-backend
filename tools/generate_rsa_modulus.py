@@ -33,9 +33,6 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from endfield_capture import srsa  # noqa: E402
 from endfield_capture.cli import _require_game_directory  # noqa: E402
 from endfield_capture.decoder import (  # noqa: E402
-    CLIENT_DLL_SHA256,
-    CLIENT_METADATA_SHA256,
-    MODULUS_DATA_PATH,
     Bootstrap,
     Engine,
     State,
@@ -43,7 +40,6 @@ from endfield_capture.decoder import (  # noqa: E402
 from endfield_capture.pe_image import PeImage  # noqa: E402
 from endfield_capture.selftest import _read_packets  # noqa: E402
 
-DEFAULT_OUT = MODULUS_DATA_PATH
 SCHEMA_VERSION = 1
 
 #: 预期的模数位数。不是 2048 位说明抓到的那条不是登录响应，或者客户端换了密钥长度。
@@ -116,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pcap", type=Path, help="含登录握手的完整抓包（默认取 runs/ 里最新的一份）")
     parser.add_argument("--game-dir", help="客户端安装目录（默认自动探测，也可用 EF_GAME_DIR）")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="输出 JSON（默认打到包内 data/）")
+    parser.add_argument("--out", type=Path, help="输出 JSON（默认写入已验证客户端对应的包内 data/）")
     parser.add_argument("--dry-run", action="store_true", help="只打印，不写文件")
     args = parser.parse_args(argv)
 
@@ -167,20 +163,20 @@ def main(argv: list[str] | None = None) -> int:
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "source": f"SRSA 原生接收入口模拟（RVA {srsa.RECEIVE_ENTRY_RVA:#x}）恢复出的公钥模数",
-        "client_dll_sha256": CLIENT_DLL_SHA256,
-        "client_metadata_sha256": CLIENT_METADATA_SHA256,
+        "client_dll_sha256": bootstrap.profile.dll_sha256,
+        "client_metadata_sha256": bootstrap.profile.metadata_sha256,
         "modulus_hex": f"{result.modulus:x}",
         "modulus_bits": result.modulus.bit_length(),
         "public_exponent": 65537,
-        "sample_pcap": (pcap.resolve().relative_to(REPO_ROOT).as_posix() if pcap.resolve().is_relative_to(REPO_ROOT) else str(pcap)),
         "emulation": details,
     }
     if args.dry_run:
         print("（--dry-run，不写文件）")
         return 0
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"已写入 {args.out}")
+    output = args.out or bootstrap.modulus_data_path
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"已写入 {output}")
     return 0
 
 

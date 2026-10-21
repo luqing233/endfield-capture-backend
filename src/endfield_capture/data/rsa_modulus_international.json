@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-21T09:08:47+00:00",
+  "source": "SRSA 原生接收入口模拟（RVA 0x109ee0）恢复出的公钥模数",
+  "client_dll_sha256": "bfedade1a1964a6fd1bb9fe2f36eec38a47472d7d76ff868d3331c5d70234959",
+  "client_metadata_sha256": "461321d9dca6a832bce3bd2390402efc7c83c145554e97a8058bb68fbec1c8ca",
+  "modulus_hex": "c08fac025d79b7e6c6a37cd90edc806a14d922685a052a8c7ddbd41443450f683d6f29645204e282b93e3ead2c0dfbb0a083b1fd897894c52874d7ed4f33244054f980e5730e64fdabbe54969f09aab754dd1dbe7f5cb19170425b5fde16648f606423cbe84f81602e8164c740aa2b5ed19a603cf1b5895fabce8021687af26582260b2aa009e83fede0935db7f48b8271817effa41e1c62027112343c70351ebcb35d1af9b0a57bd009e07aa8f18f6fb202b436b557fa9ed3f3a0536f4a580cb81f02dce1e93a4840f34edb120724409ad57470966b3c9a71ecb406fc21075902b5b1557afab87bf63859089c6bd0bdfcdd8b97a7d6eeb5475ea350edd451cd",
+  "modulus_bits": 2048,
+  "public_exponent": 65537,
+  "emulation": {
+    "state": {
+      "reason": "returned",
+      "returnValue": "0x60f91a429a10"
+    },
+    "blocks": 470306,
+    "pages": 209,
+    "seconds": 3.706,
+    "transformed_length": 208,
+    "checks": [
+      {
+        "captured": true,
+        "baseBits": 2044,
+        "exponentBits": 17,
+        "modulusBits": 2048,
+        "matchesPythonPow": true,
+        "standardPublicExponent65537": true,
+        "operandMatchesCiphertextBigEndian": true,
+        "operandMatchesCiphertextLittleEndian": false,
+        "pkcs1PaddingType": null,
+        "paddingBytes": null,
+        "type1PaddingAllFF": null
+      }
+    ]
+  }
+}
