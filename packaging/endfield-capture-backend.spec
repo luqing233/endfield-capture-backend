@@ -31,6 +31,9 @@ PKG = SRC / "endfield_capture"
 DATA = PKG / "data"
 STATIC = PKG / "static"
 
+if not (DATA / "rsa_modulus.json").is_file():
+    raise SystemExit("缺少本机构建材料 data/rsa_modulus.json；该文件不随公开源码发布。")
+
 #: 这些包靠动态导入，不显式列出来会被漏掉
 HIDDEN = [
     "scapy.layers.all",

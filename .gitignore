@@ -20,3 +20,7 @@ service.json
 # 参考会话抓包：一次真实会话的完整流量（含登录握手与两端 IP），**不进公开仓库**。
 # 自检要用就本地放一份，见 tests/test_selftest_reference.py
 tests/data/reference-session.pcap
+# 发布源码不包含密钥材料；仅在本机准备并嵌入可运行 EXE。
+src/endfield_capture/data/rsa_modulus.json
+*.pcap
+*.pcapng

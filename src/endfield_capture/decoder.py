@@ -68,8 +68,11 @@ __all__ = [
 
 #: 已核对过的客户端哈希。对不上就拒绝启动——函数 RVA 和静态材料会随版本改变，
 #: 继续跑只会安静地解出错的东西。
-CLIENT_DLL_SHA256 = "ab00f1c41e13edf9816f142b166e3c2536d5bc7707992c39e5ed52d1cc888e2c"
-CLIENT_METADATA_SHA256 = "461321d9dca6a832bce3bd2390402efc7c83c145554e97a8058bb68fbec1c8ca"
+CLIENT_DLL_SHA256 = "92a1dc8de00d43a18b62f4042f5d87df8a069d71ea9a71762c97677451a9e616"
+CLIENT_METADATA_SHA256 = "37c838f5ec9f5bee914b2b88b0ea7684a1b61b87b1cf13d5fd5d86b9778d794f"
+
+# 当前版本已通过真实登录流量验证预存模数；旧模拟器的 RVA 尚未适配此版本。
+_EMULATION_VERIFIED = False
 
 METADATA_RELATIVE_PATH = "Endfield_Data/il2cpp_data/Metadata/global-metadata.dat"
 
@@ -80,7 +83,7 @@ MODULUS_DATA_PATH = Path(__file__).with_name("data") / "rsa_modulus.json"
 #: ``(5 << 29) | (索引 << 1) | 1``——类型 5 是 il2cpp 的字符串字面量，低 29 位是索引。
 #: 旧版本这里用 ``RVA + SIZE + DISP`` 三段拼出插槽地址；本次客户端更新后直接给整段
 #: 插槽 RVA，另两段留 0，等价且少一处易错的加法。
-_KEY_LITERAL_RVA = 0x10657230
+_KEY_LITERAL_RVA = 0xF118E28
 _KEY_LITERAL_SIZE = 0
 _KEY_LITERAL_DISP = 0
 
@@ -233,8 +236,8 @@ class Bootstrap:
 
     1. **预存的数据**（``data/rsa_modulus.json``，由 ``tools/generate_rsa_modulus.py`` 离线
        生成一次）——客户端哈希对得上就直接用，**完全不碰模拟器**。打包出来的二进制走这条。
-    2. 数据缺失或与客户端对不上时，回退到**离线模拟器**：拿第一条登录响应当样本，把客户端
-       DLL 的机器码在 unicorn 里跑一遍恢复模数。这条路只在装了 unicorn 的源码环境里可用。
+    2. 只有原生入口也核对过的版本才能回退到**离线模拟器**。当前版本仅验证了预存模数，
+       数据缺失或不匹配时明确拒绝使用旧版模拟入口。
 
     两条路都要先核对客户端哈希；完成后立刻丢掉整份 DLL 镜像——之后全是纯 Python 运算。
     """
@@ -327,6 +330,11 @@ class Bootstrap:
     def _recover_modulus(self, envelope: bytes) -> int:
         """用一条真实的登录响应跑一遍原生模拟，恢复公钥模数。"""
 
+        if not _EMULATION_VERIFIED:
+            raise ValueError(
+                "当前客户端需要匹配版本的 data/rsa_modulus.json；预存模数缺失或不匹配。"
+                "旧版原生模拟入口尚未适配此客户端，请恢复随版本发布的数据文件。"
+            )
         image = self._image
         if image is None:
             # 已经释放过镜像说明模数早就恢复了，不该走到这里

@@ -19,7 +19,7 @@ from pathlib import Path
 from .pipe_server import DEFAULT_PIPE_NAME
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8765
+DEFAULT_PORT = 8766
 
 
 def _default_game_directory() -> Path | None:
@@ -56,6 +56,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="终末地抓包坐标后端：被动抓包、离线解码、本地看板",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    capture = sub.add_parser("capture", help="仅录制游戏流量到 pcap，按 Ctrl+C 结束")
+    capture.add_argument("output", type=Path, help="新建的 pcap 文件路径")
+    capture.add_argument("--interface", help="抓包网卡（网卡名或 IP）")
 
     serve = sub.add_parser("serve", help="抓包并启动本地看板")
     serve.add_argument("--host", default=DEFAULT_HOST)
@@ -109,6 +113,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "capture":
+        from scapy.all import PcapWriter, sniff
+
+        from .server import CAPTURE_FILTER, pick_interface
+
+        iface = pick_interface(args.interface)
+        with args.output.open("xb") as stream, PcapWriter(stream, sync=True) as writer:
+            sniff(
+                iface=iface,
+                filter=CAPTURE_FILTER,
+                prn=writer.write,
+                store=False,
+                started_callback=lambda: print(f"正在监听 {iface.name}，写入 {args.output}，按 Ctrl+C 结束", flush=True),
+            )
+        return 0
     if args.command == "serve":
         from .server import serve
 

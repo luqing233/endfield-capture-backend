@@ -72,6 +72,10 @@ TCP 重组（含乱序 / 重传 / 重叠）
 
 ## 安装
 
+Release 附件仅发布可运行的 Windows x64 EXE。公开源码排除 `data/rsa_modulus.json`、
+客户端文件及抓包等本地材料；自行从源码运行或打包需要另行准备匹配客户端的模数数据。
+当前版本的原生模拟器入口尚未适配，不能直接用历史生成脚本代替这份数据。
+
 ```bash
 uv sync
 # 或者
@@ -90,6 +94,12 @@ uv run --with pyinstaller pyinstaller packaging/endfield-capture-backend.spec --
 见 [packaging/README.md](packaging/README.md)。
 
 ## 用法
+
+### 新版客户端单独录包
+
+在启动游戏前运行 `uv run endfield-capture-backend capture session.pcap`。看到监听提示后进入游戏，
+结束时按 Ctrl+C。命令使用与看板相同的 TCP 端口过滤器，直接写入原始包，无需初始化客户端解码器。
+可用 `--interface` 指定网卡。每次录制请使用新的文件名。
 
 ### 启动看板
 
